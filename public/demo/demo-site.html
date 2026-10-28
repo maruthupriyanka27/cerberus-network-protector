@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Northbank — Demo Site</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .hero{ padding: 70px 24px; text-align:center; border-bottom:1px solid var(--line); }
+  .hero h1{ font-size: 34px; margin:0 0 10px; }
+  .hero p{ color:var(--text-dim); max-width:480px; margin:0 auto; }
+  .search-row{ display:flex; gap:8px; max-width:420px; margin:26px auto 0; }
+  .search-row input{ flex:1; background:var(--panel-raised); border:1px solid var(--line); border-radius:6px; padding:10px 12px; color:var(--text); font-family:var(--font-ui); }
+  .cards{ padding: 40px 24px; }
+  .card{ padding:16px; }
+  .card .thumb{ height:110px; border-radius:6px; background: linear-gradient(135deg, var(--panel-raised), var(--line)); margin-bottom:12px; }
+  .card h3{ font-size:14px; margin:0 0 6px; }
+  .card p{ font-size:12.5px; color:var(--text-dim); margin:0; }
+  .login-panel{ max-width:340px; margin: 40px auto; }
+  .field{ margin-bottom:12px; }
+  .field label{ display:block; font-size:12px; color:var(--text-dim); margin-bottom:6px; }
+  .field input{ width:100%; background:var(--panel-raised); border:1px solid var(--line); border-radius:6px; padding:9px 10px; color:var(--text); }
+  .banner{
+    margin: 0 auto 0; max-width:1200px; padding: 10px 24px;
+    font-size:12.5px; color: var(--text-faint); display:flex; align-items:center; gap:8px;
+  }
+</style>
+</head>
+<body>
+
+<div class="topnav">
+  <div class="brand"><div class="brand-mark"></div>Signal Room</div>
+  <nav>
+    <a href="/_console/dashboard.html">Dashboard</a>
+    <a href="/" class="active">Demo Site</a>
+    <a href="/_console/simulator.html">Attack Simulator</a>
+  </nav>
+  <div class="status"><span class="dot"></span> served via proxy :8080 → :3000</div>
+</div>
+
+<div class="banner"><span class="dot" style="background:#9B92B8; box-shadow:none;"></span> This is the protected target app (module 3.1) — every request here passes through the reverse proxy first.</div>
+
+<div class="hero">
+  <h1>Northbank</h1>
+  <p>A small demo storefront used to generate real, protectable traffic for the reverse proxy to score.</p>
+  <form class="search-row" action="/search" method="GET">
+    <input type="text" name="q" placeholder="Search products…" autocomplete="off">
+    <button class="primary" type="submit">Search</button>
+  </form>
+</div>
+
+<div class="page">
+  <div class="grid cols-4 cards" style="padding-top:0;">
+    <a class="panel card" href="/search?q=Field+Jacket" style="text-decoration:none; color:inherit; display:block;"><div class="thumb"></div><h3>Field Jacket</h3><p>Canvas · 4 colours</p></a>
+    <a class="panel card" href="/search?q=Trail+Pack+22L" style="text-decoration:none; color:inherit; display:block;"><div class="thumb"></div><h3>Trail Pack 22L</h3><p>Ripstop nylon</p></a>
+    <a class="panel card" href="/search?q=Wool+Beanie" style="text-decoration:none; color:inherit; display:block;"><div class="thumb"></div><h3>Wool Beanie</h3><p>Merino blend</p></a>
+    <a class="panel card" href="/search?q=Camp+Mug" style="text-decoration:none; color:inherit; display:block;"><div class="thumb"></div><h3>Camp Mug</h3><p>Enamel · 350ml</p></a>
+  </div>
+
+  <form class="panel login-panel" action="/login" method="POST">
+    <h2 style="margin-bottom:16px;">Sign in <span class="sub">/login endpoint — demo only, not real auth</span></h2>
+    <div class="field"><label>Email</label><input type="email" name="email" placeholder="you@example.com"></div>
+    <div class="field"><label>Password</label><input type="password" name="password" placeholder="••••••••"></div>
+    <button class="primary" type="submit" style="width:100%; justify-content:center;">Sign in</button>
+  </form>
+</div>
+
+<script src="/alerts.js" defer></script>
+</body>
+</html>

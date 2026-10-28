@@ -1,0 +1,116 @@
+TWO-PC DEMO — Server PC (dashboard) + Client PC (demo website + attacks)
+==========================================================================
+
+WHAT THIS BUILD DOES (matches what you asked for)
+  - Each client PC is ONE visitor, identified by its real IP address.
+  - Whatever that PC does — browsing normally, or running an attack —
+    shows up on the SERVER PC's dashboard under that PC's IP.
+  - The server's decision is enforced on THAT SAME PC:
+      score 0-39   -> allowed: the real Northbank site, normal and visible
+      score 40-69  -> challenged: a proof-of-work page; solve it (automatic,
+                      a few seconds) and you're trusted again for 2 minutes
+      score 70+    -> blocked for 5 minutes: the site is NOT served to that
+                      PC at all (HTTP 429 block page; for a TCP-layer ban,
+                      the connection itself is refused — the site becomes
+                      fully invisible, not just an error page)
+  - Both the TCP layer (raw connection floods, Slowloris) and the
+    application layer (rules + ML on request patterns) are checked, and
+    either one can trigger the same block.
+  - Everything above is now verified working (see "What I tested" below).
+
+ENVIRONMENT NEEDED
+  - 2 Windows/Mac/Linux PCs on the same Wi-Fi/LAN, each with Node.js 20 LTS.
+  - Both PCs have this SAME project folder (copy it, or share it over the
+    network — doesn't matter, as long as both have backend/ and public/).
+  - (Optional, Part C) Kali/Ubuntu/WSL2 on the client PC, for mz/nmap.
+
+STEP 1 — Server PC: start the protected site + dashboard
+  cd backend
+  npm run start:demo      (terminal 1 — the protected Northbank site, port 3000)
+  npm run start:proxy     (terminal 2 — scoring + dashboard)
+  Note the two addresses the proxy prints on startup, e.g.:
+      site/proxy:  http://192.168.1.50:8080/
+      admin:       http://192.168.1.50:9000/_console/dashboard.html
+  Open the admin address in a browser on the server PC. Keep it open.
+  Allow inbound TCP 8080 and 9000 through the server PC's firewall.
+
+STEP 2 — Client PC: open the demo website
+  Open  http://<server-ip>:8080/  — this is the real Northbank shop.
+  Browse it normally for a bit. On the SERVER's dashboard you should see
+  this PC's IP appear with status "allowed".
+
+STEP 3 — Client PC: open the Attack Lab
+  Open  http://<server-ip>:8080/_console/lab.html
+  This page is never scored itself, so it keeps working even while the
+  PC's main site tab is blocked — you can watch your own status live.
+  - Click an HTTP attack button (e.g. "Same-URL flood" or "Smart flood").
+    Within a few seconds the Lab's status card and the dashboard both show
+    this PC moving to "challenged" then "blocked".
+  - Switch back to the Demo Site tab: it now shows the block page with a
+    live countdown. Refresh — same thing (still blocked, consistently).
+  - Wait for the block to expire (5 min), or click "Unblock" next to this
+    PC's row on the dashboard. Refresh the Demo Site tab: it's back.
+
+STEP 4 — Client PC: TCP-layer attack (connection flood / Slowloris)
+  A browser can't open raw sockets, so this step uses a terminal on the
+  client PC (the Lab page shows these same two commands, pre-filled):
+      cd backend
+      node attack-sim/tcp-flood-sim.js --host <server-ip> --port 8080 --count 80
+      node attack-sim/slowloris-sim.js --host <server-ip> --port 8080 --count 12
+  Watch the dashboard: "Closed at TCP layer" and the banned-IP count jump,
+  and this PC's row shows blocked with reason "TCP layer: flood/slowloris".
+  The Demo Site tab on the client PC now gets NO response at all (not even
+  a block page) — the connection itself is refused. That's the "invisible"
+  behaviour you asked for.
+
+STEP 5 — Client PC: proof-of-work recovery
+  After a few requests put you in the 40-69 band (not yet blocked), open
+  the Demo Site tab: you'll see the PoW challenge page. It solves itself
+  in a few seconds (pure-JS, works on plain http://, no browser warning)
+  and takes you back to the site. For the next 2 minutes you won't be
+  re-challenged (but a fresh flood can still push you straight to block).
+
+PART C — mz / nmap (your professor's requirement)
+  Only ever point these at the SERVER PC's own address, never a public URL.
+  On the client PC's Linux/WSL2 terminal:
+      sudo mz <interface> -A <client-ip> -B <server-ip> -t tcp \
+        "flags=syn, sp=1024-65000, dp=8080" -c 5000
+  Expected (and correct) result: the dashboard's TCP counters do NOT move.
+  mz sends raw SYN packets that never complete a handshake, so this project
+  (and your SRS) correctly treats it as out of scope — it's a job for the
+  OS/firewall (SYN cookies), not the app. Capture it in Wireshark on the
+  server PC as your "out of scope, handled below the app" slide. Use
+  tcp-flood-sim.js / slowloris-sim.js (Step 4) for the actual in-scope,
+  detected attacks.
+
+WHAT I TESTED BEFORE PACKAGING THIS (all passed)
+  - node tools/selftest.js        18/18 checks: every legit browsing
+    pattern stays allowed; every attack pattern is blocked within 3-15
+    requests; a block is a fixed 5-minute sentence that doesn't reset.
+  - node tools/selftest-tcp.js    TCP flood bans the IP, cascades into an
+    HTTP block (blockSource "tcp"), the site becomes fully unreachable,
+    and admin unblock immediately restores it.
+  - Slowloris: 12 stalled connections correctly detected and banned with
+    the right reason string, confirmed via the live TCP snapshot API.
+  - Full PoW lifecycle, with a real browser-like pause between requests:
+    challenge -> solve -> immediate allow -> 2-minute pass holds through
+    normal browsing -> expires cleanly back to allow.
+  - ML model retrained on this system's own recorded traffic (not the
+    mismatched CICIDS2017 flow data it shipped with): 98.5% accuracy on
+    held-out live windows, and it now correctly pushes toward blocking
+    floods instead of occasionally favouring them.
+  Run both scripts yourself any time: start the two servers, then
+  `node tools/selftest.js` (TCP monitor off) or `node tools/selftest-tcp.js`
+  (TCP monitor on, the default).
+
+IF SOMETHING LOOKS WRONG
+  - Client PC can't reach the server: check the server's firewall allows
+    inbound 8080/9000, and both PCs are actually on the same network.
+  - Dashboard doesn't update: the dashboard polls /_console/api/visitors
+    every 2s and listens on a WebSocket — if the admin tab was open before
+    the proxy started, just refresh it once.
+  - A legit-looking PC gets challenged: check it's loading the page in a
+    real browser (not curl/a script) — the rules penalise missing
+    User-Agent/Accept headers and pages that never load CSS/JS, which is
+    exactly what a real browser does automatically and a bare script does
+    not.

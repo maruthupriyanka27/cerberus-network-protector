@@ -1,0 +1,130 @@
+Signal Room — setup
+====================
+
+1. Install dependencies (once):
+     cd backend
+     npm install
+
+2. Start BOTH servers, each in its own terminal, both from the `backend` folder:
+     Terminal 1:  npm run start:demo    (protected app, port 3000 — unscored)
+     Terminal 2:  npm run start:proxy   (this ONE command starts TWO ports —
+                                         see below)
+
+3. Three ports now, each with a different purpose — don't mix them up:
+     Port 3000 (internal only, never browse this directly):
+       The real site, unprotected. Only the proxy talks to it.
+     Port 8080 (PUBLIC — this is the one real visitors/attackers use):
+       Demo site:   http://localhost:8080/
+       PoW page:    http://localhost:8080/_console/challenge.html  (shown
+                     automatically mid-request; you don't normally open it
+                     yourself)
+     Port 9000 (ADMIN ONLY — never expose this on the internet later):
+       Dashboard:   http://localhost:9000/_console/dashboard.html
+       Simulator:   http://localhost:9000/_console/simulator.html
+       On the Simulator page, "Target proxy" defaults to this machine's own
+       port 8080 — change it only if the proxy is running on a different
+       host than this admin console (e.g. once it's on the VPS).
+
+   Why split like this: in a real deployment you want random visitors to
+   be able to reach the site (8080) but have no way to find or reach the
+   dashboard/simulator (9000) — that's now a separate port you can
+   firewall off independently. Both ports are started by the same
+   `npm run start:proxy` command, in the same process, so they share the
+   same live scoring data — nothing needs syncing between them.
+
+4. To demo TCP-layer protection (flood + Slowloris + banning), from a THIRD
+   terminal, also in `backend`:
+     npm run sim:tcp-flood
+     npm run sim:slowloris
+   Watch the "Closed at TCP layer" KPI on the dashboard update live.
+
+5. ML training scripts are in backend/ml/:
+     train_cicids2017_nosklearn.py   — no scikit-learn/scipy needed (use this
+                                        on Windows if you hit an "Application
+                                        Control policy" DLL block)
+     train_cicids2017.py             — sklearn version (GridSearchCV, recall-scored)
+     make_sample_from_cicids2017.py  — regenerates the sample CSV used by the
+                                        browser simulator from your raw dataset
+     baseline-comparison/            — the two scripts used to show the
+                                        mentor "on what basis" preprocessing
+                                        was chosen (unmodified vs cleaned)
+
+   Run from backend/ml, e.g.:
+     python train_cicids2017_nosklearn.py --data-dir "K:\MP3\MachineLearningCSV\MachineLearningCVE"
+
+6. MULTI-PC DEMO (1 admin laptop + several attacker/legit PCs on the same LAN/Wi-Fi)
+   ------------------------------------------------------------------------------
+   No code changes were needed for this — both servers already bind to all
+   network interfaces (not just localhost), and the dashboard/simulator pages
+   already use relative URLs, so they work from any machine's browser.
+
+   On the ADMIN LAPTOP:
+     a) cd backend && npm run start:demo      (terminal 1)
+     b) npm run start:proxy                   (terminal 2 — starts both
+        the public proxy on 8080 AND the admin console on 9000)
+        The startup log prints every LAN IP both ports are reachable on,
+        e.g.  "site/proxy: http://192.168.1.23:8080/"
+              "admin:      http://192.168.1.23:9000/_console/dashboard.html"
+        Use that IP (not localhost) on every other PC below.
+     c) Windows Firewall / macOS firewall: allow INBOUND TCP on BOTH port
+        8080 and port 9000 for node.exe for this LAN-only demo phase
+        (Windows Defender Firewall -> Advanced settings -> Inbound Rules
+        -> New Rule -> Port -> TCP -> 8080,9000 -> Allow). Port 3000 does
+        NOT need to be opened — only the proxy talks to it, on localhost.
+        (Once this moves to the VPS later, only 8080 gets opened to the
+        internet; 9000 stays closed except to your own IP.)
+     d) Open http://<laptop-ip>:9000/_console/dashboard.html on the
+        laptop itself (or any PC) to watch live traffic.
+
+   On a "LEGIT" PC:
+     - Just browse http://<laptop-ip>:8080/ normally, OR
+     - Open http://<laptop-ip>:9000/_console/simulator.html, pick "Legit"
+       mode, set "simulated clients" to 1, confirm "Target proxy" field
+       shows http://<laptop-ip>:8080, click Start.
+
+   On an "HTTP ATTACKER" PC (application-layer flood):
+     - Open http://<laptop-ip>:9000/_console/simulator.html, pick "Attack"
+       mode, confirm "Target proxy" shows http://<laptop-ip>:8080, click
+       Start. This hammers /search as fast as fetch() allows — note the
+       simulator page itself is on 9000, but it fires traffic AT 8080.
+
+   On a "TCP ATTACKER" PC (connection-layer flood / Slowloris):
+     - Needs Node installed (or copy just the backend/attack-sim folder +
+       a package.json with no dependencies — these two scripts use only
+       Node's built-in `net` module, nothing else).
+     - Connection flood:  node attack-sim/tcp-flood-sim.js --host <laptop-ip> --port 8080 --count 100
+     - Slowloris:         node attack-sim/slowloris-sim.js --host <laptop-ip> --port 8080 --count 30
+     - Watch the dashboard's "Closed at TCP layer" KPI and the banned-IP
+       count climb; that PC's own further connections then get dropped
+       instantly (the ban) until it expires.
+
+   On an "mz" (Mausezahn) PC, if your mentor wants raw packet-level traffic:
+     - mz is Linux-only (Kali/Ubuntu, or WSL2 on Windows). Needs root
+       (sudo) because it crafts raw packets below the normal OS socket API.
+     - IMPORTANT, be upfront about this in your viva: mz writes packets
+       directly to the wire and does not run through the OS's normal TCP
+       handshake/session logic the way net.createConnection() does. That
+       means it's good for showing a classic SYN-flood / volumetric packet
+       capture (which this project's own SRS explicitly marks OUT OF
+       SCOPE, since it never completes a handshake and tcp-monitor.js's
+       `server.on('connection', ...)` never fires for it). It is NOT a
+       reliable way to trigger the in-scope connection-rate/concurrent-
+       connections/Slowloris detectors -- use tcp-flood-sim.js /
+       slowloris-sim.js above for those, since they use real completed
+       TCP connections.
+     - Example SYN-flood-style command (for the out-of-scope demonstration
+       / a Wireshark capture slide only):
+         sudo mz <interface> -A <laptop-ip> -B <laptop-ip> -t tcp "flags=syn, sp=1-65000, dp=8080" -c 0
+       (-c 0 = send forever; Ctrl+C to stop.)
+
+   What the blocked/challenged PC actually sees:
+     - HTTP block tier (score 70+): a styled "Too many requests" page with
+       a live countdown and the reasons that triggered it (block.html),
+       HTTP 429, with a Retry-After header.
+     - HTTP challenge tier (score 40-70): the proof-of-work page
+       (challenge.html) — solves itself in under 2s on a real browser.
+     - TCP-layer flood/Slowloris/ban: the connection is simply dropped —
+       a script sees ECONNRESET/"socket hang up"; a browser shows its own
+       "connection reset" error. No HTML page is possible at this layer
+       because the HTTP request never arrived (this matches the SRS: "no
+       challenge tier at this layer").

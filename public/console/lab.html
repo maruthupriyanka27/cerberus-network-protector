@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Attack Lab — Signal Room</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .lab-wrap{ max-width:980px; margin:0 auto; padding:0 20px 40px; }
+  .btn-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px; }
+  @media (max-width:640px){ .btn-grid{ grid-template-columns:1fr; } }
+  .atk-btn{ text-align:left; padding:12px 14px; border-radius:10px; border:1px solid var(--line); background:var(--panel); cursor:pointer; }
+  .atk-btn:hover{ border-color: var(--block); }
+  .atk-btn.running{ border-color: var(--block); background: var(--block-bg); }
+  .atk-btn b{ display:block; font-size:13.5px; }
+  .atk-btn span{ font-size:12px; color:var(--text-dim); }
+  .my-status{ display:flex; align-items:center; gap:14px; padding:14px 16px; border-radius:12px; margin-bottom:16px; }
+  .my-status .sdot{ width:14px; height:14px; border-radius:50%; flex:none; }
+  #log{ font-family:var(--mono,monospace); font-size:12px; max-height:220px; overflow:auto; background:var(--panel-raised); border-radius:10px; padding:10px; margin-top:10px; }
+  #log div{ padding:2px 0; border-bottom:1px dashed var(--line); }
+</style>
+</head>
+<body>
+
+<div class="topnav">
+  <div class="brand"><div class="brand-mark"></div>Signal Room</div>
+  <nav>
+    <a href="/">Demo Site</a>
+    <a href="lab.html" class="active">Attack Lab</a>
+  </nav>
+  <div class="status"><span class="dot" id="conn-dot"></span> <span id="conn-txt">checking…</span></div>
+</div>
+
+<div class="page lab-wrap">
+  <div class="page-head">
+    <h1>Attack Lab — this PC</h1>
+    <p>Runs real HTTP and TCP traffic from THIS PC's browser against the protected site (same server the Demo Site uses). This page itself is never scored, so you can keep watching your own status even while this PC is being blocked.</p>
+  </div>
+
+  <div class="panel my-status" id="my-status">
+    <div class="sdot" id="my-dot" style="background:var(--allow);"></div>
+    <div>
+      <div style="font-weight:700;" id="my-title">This PC: allowed</div>
+      <div class="faint" id="my-detail" style="font-size:12.5px;">Score 0 · not blocked</div>
+    </div>
+  </div>
+
+  <div class="grid cols-2" style="align-items:start;">
+    <div class="panel">
+      <h2>Application-layer (HTTP) attacks</h2>
+      <p class="faint" style="font-size:12.5px; margin-top:-4px;">Plain fetch() requests — the same thing a browser-based attack tool sends. Each targets the real demo site through the proxy's scoring gate.</p>
+      <div class="btn-grid">
+        <button class="atk-btn" data-k="sameUrlFlood"><b>Same-URL flood</b><span>Same path, no Accept header, as fast as possible</span></button>
+        <button class="atk-btn" data-k="smartFlood"><b>Smart flood</b><span>Proper headers, rotating query strings, high rate</span></button>
+        <button class="atk-btn" data-k="scraper"><b>Scraper</b><span>Many different pages, never loads assets</span></button>
+        <button class="atk-btn" data-k="assetFlood"><b>Asset flood</b><span>Hammers static files (css/js)</span></button>
+        <button class="atk-btn" data-k="slowBot"><b>Bot-like</b><span>Tool user-agent, steady moderate rate</span></button>
+        <button class="atk-btn" data-k="legit"><b>Legit browsing</b><span>Normal human-paced shopping (control)</span></button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>TCP-layer attacks</h2>
+      <p class="faint" style="font-size:12.5px; margin-top:-4px;">
+        A browser page cannot open raw sockets — that is a real OS-level capability, not something fetch() can fake. So TCP attacks run from a terminal
+        <b>on this PC</b>, not from this page. This page just keeps watching this PC's own status while you run them, so you can see the effect live.
+      </p>
+      <div style="margin-top:8px;">
+        <label class="faint" style="font-size:11.5px;">Server address (fill in once):</label>
+        <input id="srv-host" type="text" placeholder="e.g. 10.0.0.5" style="width:100%; margin:4px 0 10px; padding:7px 9px; border-radius:8px; border:1px solid var(--line); font-family:var(--mono,monospace);">
+      </div>
+      <div class="faint" style="font-size:11.5px; margin-bottom:4px;">TCP connection flood (80 raw connections, no data):</div>
+      <pre id="cmd-flood" class="mono" style="background:var(--panel-raised); border-radius:8px; padding:8px 10px; font-size:12px; overflow-x:auto; cursor:pointer;" title="Click to copy">node attack-sim/tcp-flood-sim.js --host &lt;server&gt; --port 8080 --count 80</pre>
+      <div class="faint" style="font-size:11.5px; margin:10px 0 4px;">Slowloris (12 connections, send nothing):</div>
+      <pre id="cmd-slow" class="mono" style="background:var(--panel-raised); border-radius:8px; padding:8px 10px; font-size:12px; overflow-x:auto; cursor:pointer;" title="Click to copy">node attack-sim/slowloris-sim.js --host &lt;server&gt; --port 8080 --count 12</pre>
+      <p class="faint" style="font-size:11.5px; margin-top:10px;">
+        Run from the <code>backend</code> folder on this PC. For a real <code>nmap</code> / <code>mz</code> demo (actual packet-level tools, same idea), see DEPLOY-AND-DEMO.txt — their effect on this PC's status below is identical.
+      </p>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-top:16px;">
+    <h2>Activity log <span class="sub">this PC only</span></h2>
+    <div id="log"><div class="faint">Pick an attack above, or browse the <a href="/">Demo Site</a> directly.</div></div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+<script>
+(function () {
+  const log = document.getElementById('log');
+  function logLine(msg, cls) {
+    const d = document.createElement('div');
+    if (cls) d.style.color = `var(--${cls})`;
+    d.textContent = `[${new Date().toLocaleTimeString('en-GB')}] ${msg}`;
+    log.prepend(d);
+    while (log.children.length > 80) log.removeChild(log.lastChild);
+  }
+
+  const PAGES = ['/', '/search?q=jacket', '/search?cat=Camp', '/product/field-jacket', '/product/trail-pack-22', '/login'];
+  const ASSETS = ['/northbank.css', '/northbank.js', '/alerts.js'];
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const pick = (a) => a[Math.floor(Math.random() * a.length)];
+
+  let running = null, stopFlag = false;
+
+  async function hit(path, headers) {
+    try {
+      const res = await fetch(path, { headers, cache: 'no-store' });
+      await res.arrayBuffer();
+      const tier = res.headers.get('x-tier') || (res.status === 429 ? 'block' : (res.status === 403 ? 'challenge' : '?'));
+      return { tier, status: res.status, score: res.headers.get('x-score') };
+    } catch (e) { return { tier: 'error', status: 0 }; }
+  }
+
+  const RUNS = {
+    legit: async () => { for (let i = 0; i < 6 && !stopFlag; i++) { await hit(pick(PAGES), { Accept: 'text/html' }); if (i === 0) await Promise.all(ASSETS.map((a) => hit(a, { Accept: '*/*' }))); await sleep(1500 + Math.random() * 2000); } },
+    sameUrlFlood: async () => { for (let i = 0; i < 400 && !stopFlag; i++) { await hit('/search?q=a', {}); } },
+    smartFlood: async () => { let i = 0; while (!stopFlag && i < 400) { await hit('/search?q=' + (i++) + Math.random().toString(36).slice(2, 5), { Accept: 'text/html' }); await sleep(20); } },
+    scraper: async () => { let i = 0; while (!stopFlag && i < 100) { await hit(PAGES[i++ % PAGES.length], { Accept: 'text/html' }); await sleep(120); } },
+    assetFlood: async () => { let i = 0; while (!stopFlag && i < 400) { await hit(pick(ASSETS), {}); i++; } },
+    slowBot: async () => { let i = 0; while (!stopFlag && i < 60) { await hit(PAGES[i++ % PAGES.length], { Accept: '*/*' }); await sleep(300); } },
+  };
+
+  async function runHttp(kind) {
+    logLine(`starting "${kind}"…`);
+    await RUNS[kind]();
+    logLine(`"${kind}" finished.`);
+    refreshStatus();
+  }
+
+  document.querySelectorAll('.atk-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const k = btn.dataset.k;
+      if (running === k) { stopFlag = true; btn.classList.remove('running'); btn.querySelector('b').textContent = btn.querySelector('b').textContent.replace(' (stop)', ''); running = null; return; }
+      if (running) return;
+      running = k; stopFlag = false;
+      btn.classList.add('running');
+      const label = btn.querySelector('b');
+      const orig = label.textContent; label.textContent = orig + ' (stop)';
+      await runHttp(k);
+      btn.classList.remove('running'); label.textContent = orig; running = null;
+    });
+  });
+
+  // Fill in the server host automatically (same host this page was loaded from)
+  // and keep the two command blocks in sync; click either to copy it.
+  const hostInput = document.getElementById('srv-host');
+  hostInput.value = location.hostname;
+  function updateCmds() {
+    const h = hostInput.value.trim() || '<server>';
+    document.getElementById('cmd-flood').textContent = `node attack-sim/tcp-flood-sim.js --host ${h} --port 8080 --count 80`;
+    document.getElementById('cmd-slow').textContent = `node attack-sim/slowloris-sim.js --host ${h} --port 8080 --count 12`;
+  }
+  hostInput.addEventListener('input', updateCmds);
+  updateCmds();
+  ['cmd-flood', 'cmd-slow'].forEach((id) => {
+    const el = document.getElementById(id);
+    el.addEventListener('click', () => {
+      navigator.clipboard?.writeText(el.textContent).then(() => logLine('copied command to clipboard.'));
+    });
+  });
+
+  async function refreshStatus() {
+    try {
+      const res = await fetch('/_security/status', { cache: 'no-store' });
+      const s = await res.json();
+      document.getElementById('conn-dot').style.background = 'var(--allow)';
+      document.getElementById('conn-txt').textContent = 'connected';
+    } catch (e) {
+      document.getElementById('conn-dot').style.background = 'var(--block)';
+      document.getElementById('conn-txt').textContent = 'offline';
+    }
+    try {
+      const res = await fetch('/', { cache: 'no-store' });
+      const tier = res.headers.get('x-tier') || (res.status === 429 ? 'block' : res.status === 403 ? 'challenge' : 'allow');
+      const score = res.headers.get('x-score') || '0';
+      const dot = document.getElementById('my-dot'), title = document.getElementById('my-title'), detail = document.getElementById('my-detail');
+      const map = { allow: ['var(--allow)', 'allowed'], challenge: ['var(--challenge)', 'challenged — PoW required'], block: ['var(--block)', 'BLOCKED'] };
+      const [color, text] = map[tier] || ['var(--text-dim)', tier];
+      dot.style.background = color;
+      title.textContent = `This PC: ${text}`;
+      detail.textContent = `Score ${score}` + (res.status === 429 ? ' · the Demo Site tab will show the block page' : res.status === 403 ? ' · the Demo Site tab will show the PoW challenge' : ' · site is visible normally');
+    } catch (e) {}
+  }
+  refreshStatus();
+  setInterval(refreshStatus, 2500);
+})();
+</script>
+
+</body>
+</html>
