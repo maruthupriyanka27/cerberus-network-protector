@@ -1,0 +1,55 @@
+DEPLOYED URL (Render) + MULTI-PC DEMO + mz
+==========================================
+
+A. DEPLOY (gives your reviewer a URL)
+  1. Push this folder to a GitHub repo (node_modules is git-ignored).
+  2. Render -> New -> Blueprint -> pick the repo (render.yaml sets plan: free)
+     (root dir backend, npm install, npm start, env vars, random ADMIN_TOKEN).
+  3. Render -> your service -> Logs: find the line
+        ADMIN login (open once per browser): /_admin/login?key=XXXX
+     (or read ADMIN_TOKEN under Environment). Keep it private.
+  4. Public site:      https://<your-app>.onrender.com/
+     Admin (1 PC):     https://<your-app>.onrender.com/_admin/login?key=<ADMIN_TOKEN>
+                       -> redirects to the dashboard. Simulator is at
+                       /_console/simulator.html (same login cookie).
+     Anyone without the token gets 404 for all /_console admin pages.
+  Free tier sleeps after ~15 min idle and RESETS scores/dashboard when it
+  restarts. Open the URL a minute before the demo.
+
+B. MULTI-PC DEMO ON THE DEPLOYED URL
+  - Dashboard PC: open the admin login URL above, keep dashboard open.
+  - Legit PC(s): just browse the site, or simulator -> Legit mode.
+  - Attacker PC(s): open /_console/simulator.html (needs the admin login once
+    on that PC) -> Attack mode, Target = the site's own URL (pre-filled).
+  - Each PC's block / PoW page appears on THAT PC; the dashboard shows all.
+  - This mode detects HTTP-layer attacks only (rate, headers, repeated path,
+    missing assets, ML). Client IPs come from X-Forwarded-For. PCs on the same
+    Wi-Fi share one public IP, but the simulator tags each PC with its own
+    random client id, so they are still scored separately.
+  - TCP-layer detection is OFF here on purpose: Render's load balancer owns
+    the TCP connections, so the app would only ever see the load balancer.
+
+C. TCP-LAYER + mz DEMO (same code, on your own network)
+  - Admin laptop:  cd backend && npm run start:demo   +   npm run start:proxy
+    (dual-port: 8080 public, 9000 admin; TCP monitor ON)
+  - Other PCs on the LAN attack  http://<laptop-ip>:8080  with:
+      node attack-sim/tcp-flood-sim.js --host <laptop-ip> --port 8080 --count 100
+      node attack-sim/slowloris-sim.js --host <laptop-ip> --port 8080 --count 30
+  - mz (Linux/Kali, sudo): ONLY against your own laptop's LAN IP, never against
+    onrender.com or anyone else's server. mz sends hand-built packets without a
+    real TCP handshake, so it shows up in Wireshark / OS counters but does NOT
+    trigger tcp-monitor.js (the SRS marks raw SYN floods out of scope). Present
+    it as: "packet-level flood: out of scope, handled by OS/network layer
+    (SYN cookies, firewall); app-level detectors catch completed-connection
+    floods and Slowloris". Ask your professor exactly what mz output they want
+    to see; a Wireshark capture + the dashboard staying healthy answers it.
+
+D. Changes in this version
+  - proxy-server.js: SINGLE_PORT/hosted mode, trust proxy, TCP monitor switch,
+    token-gated admin on the public port, admin WebSocket at /_admin-ws,
+    PORT env support, removed the public unauthenticated /_security/test-alert.
+  - start-hosted.js, render.yaml, .gitignore added; npm start added.
+  - console/app.js + dashboard.js: work on one origin or two ports.
+  - reputation.js: a solved PoW no longer exempts a client from the BLOCK tier.
+  Not changed (known): the 60 s PoW hold is enforced by the page only, and
+  the block page's 60 s is a minimum while the score really decays in ~16 s.

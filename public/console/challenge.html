@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Verifying — Northbank</title>
+<link rel="stylesheet" href="style.css">
+<script src="app.js"></script>
+<style>
+  .challenge-wrap{
+    min-height: calc(100vh - 57px);
+    display:flex; align-items:center; justify-content:center;
+    padding: 24px;
+  }
+  .challenge-card{
+    width:100%; max-width: 440px; text-align:center; padding: 40px 32px;
+  }
+  .spinner{ 
+    width:44px; height:44px; margin: 0 auto 22px; 
+    border-radius:50%;
+    border: 3px solid var(--line);
+    border-top-color: var(--challenge);
+    animation: spin 0.9s linear infinite;
+  }
+  @keyframes spin{ to{ transform: rotate(360deg); } }
+  .challenge-card h1{ font-size:17px; margin:0 0 8px; font-weight:700; }
+  .challenge-card p{ color:var(--text-dim); font-size:13px; margin:0 0 20px; line-height:1.6; }
+  .progress-track{ height:6px; border-radius:3px; background:var(--panel-raised); overflow:hidden; margin-bottom:10px; }
+  .progress-fill{ height:100%; width:0%; background: var(--challenge); transition: width 0.15s linear; }
+  .meta{ display:flex; justify-content:space-between; font-family:var(--font-data); font-size:11.5px; color:var(--text-faint); }
+  .done-icon{ width:44px; height:44px; margin:0 auto 20px; border-radius:50%; background:var(--allow-bg); display:flex; align-items:center; justify-content:center; color:var(--allow); font-size:22px; }
+  
+  /* 1-Minute Cooldown Box */
+  .cooldown-box{
+    margin: 20px 0 16px;
+    padding: 18px 16px 14px;
+    background: var(--panel-raised);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    text-align: center;
+  }
+  .cooldown-timer{
+    font-family: var(--font-data);
+    font-size: 34px;
+    font-weight: 700;
+    color: var(--challenge);
+    line-height: 1.1;
+    margin: 2px 0 6px;
+  }
+  .cooldown-sub{
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-bottom: 12px;
+  }
+  .view-site-btn{
+    width: 100%;
+    justify-content: center;
+    margin-top: 14px;
+    padding: 11px 18px;
+    font-size: 13.5px;
+  }
+</style>
+</head>
+<body>
+
+<div class="topnav">
+  <div class="brand"><div class="brand-mark"></div>Signal Room</div>
+  <nav>
+    <a href="/_console/dashboard.html" data-origin="admin">Dashboard</a>
+    <a href="/">Demo Site</a>
+    <a href="challenge.html" class="active">PoW Challenge</a>
+    <a href="/_console/simulator.html" data-origin="admin">Attack Simulator</a>
+  </nav>
+  <div class="status"><span class="dot" style="background:#E8A400; box-shadow:0 0 0 3px rgba(232,164,0,0.25);"></span> challenge tier (score 40–69)</div>
+</div>
+
+<div class="challenge-wrap">
+  <div class="panel challenge-card" id="card">
+    <div class="spinner" id="spinner"></div>
+    <h1 id="title">Checking your browser</h1>
+    <p id="desc">Northbank is verifying this request before continuing. This runs automatically — a real browser solves it in a few seconds.</p>
+    <div class="progress-track"><div class="progress-fill" id="fill"></div></div>
+    <div class="meta">
+      <span id="nonce">nonce: 7f2a…c9</span>
+      <span id="attempts">0 hashes tried</span>
+    </div>
+  </div>
+</div>
+
+<script>
+  const fill = document.getElementById('fill');
+  const attempts = document.getElementById('attempts');
+  const spinner = document.getElementById('spinner');
+  const title = document.getElementById('title');
+  const desc = document.getElementById('desc');
+
+  // Pure-JS SHA-256 (synchronous). crypto.subtle is DISABLED by browsers on plain
+  // http:// pages that are not localhost - i.e. exactly when a client PC opens
+  // http://<server-lan-ip>:8080 - so the challenge must not depend on it.
+  const K = new Uint32Array([
+    0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+    0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+    0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+    0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2]);
+  const W = new Uint32Array(64);
+  function sha256(str){               // str is ASCII (nonce + ':' + digits)
+    const n = str.length, total = ((n + 9 + 63) >> 6) << 6, buf = new Uint8Array(total);
+    for (let i = 0; i < n; i++) buf[i] = str.charCodeAt(i);
+    buf[n] = 0x80;
+    const bits = n * 8; buf[total-4] = (bits >>> 24) & 255; buf[total-3] = (bits >>> 16) & 255; buf[total-2] = (bits >>> 8) & 255; buf[total-1] = bits & 255;
+    let h0=0x6a09e667,h1=0xbb67ae85,h2=0x3c6ef372,h3=0xa54ff53a,h4=0x510e527f,h5=0x9b05688c,h6=0x1f83d9ab,h7=0x5be0cd19;
+    for (let off = 0; off < total; off += 64){
+      for (let i = 0; i < 16; i++) W[i] = (buf[off+4*i]<<24)|(buf[off+4*i+1]<<16)|(buf[off+4*i+2]<<8)|buf[off+4*i+3];
+      for (let i = 16; i < 64; i++){
+        const a = W[i-15], b = W[i-2];
+        const s0 = ((a>>>7)|(a<<25)) ^ ((a>>>18)|(a<<14)) ^ (a>>>3);
+        const s1 = ((b>>>17)|(b<<15)) ^ ((b>>>19)|(b<<13)) ^ (b>>>10);
+        W[i] = (W[i-16] + s0 + W[i-7] + s1) | 0;
+      }
+      let a=h0,b=h1,c=h2,d=h3,e=h4,f=h5,g=h6,h=h7;
+      for (let i = 0; i < 64; i++){
+        const S1 = ((e>>>6)|(e<<26)) ^ ((e>>>11)|(e<<21)) ^ ((e>>>25)|(e<<7));
+        const ch = (e & f) ^ (~e & g);
+        const t1 = (h + S1 + ch + K[i] + W[i]) | 0;
+        const S0 = ((a>>>2)|(a<<30)) ^ ((a>>>13)|(a<<19)) ^ ((a>>>22)|(a<<10));
+        const mj = (a & b) ^ (a & c) ^ (b & c);
+        const t2 = (S0 + mj) | 0;
+        h = g; g = f; f = e; e = (d + t1) | 0; d = c; c = b; b = a; a = (t1 + t2) | 0;
+      }
+      h0=(h0+a)|0;h1=(h1+b)|0;h2=(h2+c)|0;h3=(h3+d)|0;h4=(h4+e)|0;h5=(h5+f)|0;h6=(h6+g)|0;h7=(h7+h)|0;
+    }
+    return [h0,h1,h2,h3,h4,h5,h6,h7];
+  }
+  function leadingZeroBits(words){
+    let bits = 0;
+    for (const w of words){
+      if (w === 0){ bits += 32; continue; }
+      return bits + Math.clz32(w);
+    }
+    return bits;
+  }
+
+  function fmt(ms){ const s = Math.round(ms/1000); return s >= 60 ? Math.round(s/60) + ' minutes' : s + ' seconds'; }
+
+  async function solve(){
+    const res = await fetch('/_console/api/challenge/new', { cache: 'no-store' });
+    if (res.status === 429){ location.reload(); return; }       // blocked meanwhile -> block page
+    const { nonce, difficulty } = await res.json();
+    document.getElementById('nonce').textContent = 'nonce: ' + nonce.slice(0,8) + '… · difficulty ' + difficulty + ' bits';
+
+    const expected = Math.pow(2, difficulty);
+    let counter = 0;
+    for (;;){
+      if (leadingZeroBits(sha256(nonce + ':' + counter)) >= difficulty) break;
+      counter++;
+      if (counter % 2000 === 0){
+        attempts.textContent = counter.toLocaleString() + ' hashes tried';
+        fill.style.width = Math.min(95, counter / expected * 100) + '%';
+        await new Promise(r => setTimeout(r, 0));               // let the UI paint
+      }
+    }
+    attempts.textContent = counter.toLocaleString() + ' hashes tried';
+    fill.style.width = '100%';
+
+    const verifyRes = await fetch('/_console/api/challenge/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ solution: counter })
+    });
+    const out = await verifyRes.json();
+
+    if (out.ok){
+      spinner.outerHTML = '<div class="done-icon">✓</div>';
+      title.textContent = 'Verified';
+      desc.textContent = 'Proof of work accepted. You will not be challenged again for ' + fmt(out.verifiedForMs) + ' — taking you back to the site…';
+      document.getElementById('nonce').textContent = 'verified · pass valid ' + fmt(out.verifiedForMs);
+      // Back to where the visitor was going (this page can be served in place of ANY url).
+      const direct = location.pathname.indexOf('/_console/challenge') === 0;
+      setTimeout(() => { if (direct) location.replace('/'); else location.replace(location.href); }, 1200);
+    } else if (verifyRes.status === 429){
+      location.reload();
+    } else {
+      title.textContent = 'Verification failed';
+      desc.textContent = 'Something went wrong — trying again.';
+      setTimeout(() => location.reload(), 1200);
+    }
+  }
+  solve();
+</script>
+
+</body>
+</html>

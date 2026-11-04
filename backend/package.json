@@ -1,0 +1,17 @@
+{
+  "name": "signal-room-backend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "start:demo": "node demo-app-server.js",
+    "start:proxy": "node proxy-server.js",
+    "sim:tcp-flood": "node attack-sim/tcp-flood-sim.js",
+    "sim:slowloris": "node attack-sim/slowloris-sim.js",
+    "start": "node start-hosted.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "http-proxy-middleware": "^2.0.6",
+    "ws": "^8.17.0"
+  }
+}

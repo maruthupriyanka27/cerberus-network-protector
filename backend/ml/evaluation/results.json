@@ -1,0 +1,753 @@
+{
+  "meta": {
+    "rows": 2827876,
+    "benign": 2271320,
+    "attack": 556556,
+    "rows_A": 600000
+  },
+  "feature_importance": [
+    {
+      "feature": "Avg Packet Size",
+      "importance": 0.40842684339976143
+    },
+    {
+      "feature": "Total Backward Packets",
+      "importance": 0.15455276980773128
+    },
+    {
+      "feature": "Flow Packets/s",
+      "importance": 0.1379976260346851
+    },
+    {
+      "feature": "Total Fwd Packets",
+      "importance": 0.10060663818872796
+    },
+    {
+      "feature": "Flow Duration",
+      "importance": 0.10049187993608363
+    },
+    {
+      "feature": "Flow Bytes/s",
+      "importance": 0.09215301155092202
+    },
+    {
+      "feature": "SYN Flag Count",
+      "importance": 0.005771231082088558
+    }
+  ],
+  "live": {
+    "n_benign": 707,
+    "n_attack": 915,
+    "clients": 133,
+    "cicids_models": {
+      "Logistic Regression": {
+        "accuracy": 0.35388409371146734,
+        "precision": 0.3779816513761468,
+        "recall": 0.22513661202185792,
+        "f1": 0.2821917808219178,
+        "false_positive_rate": 0.4794908062234795,
+        "miss_rate": 0.774863387978142,
+        "roc_auc": 0.22345630347578083,
+        "pr_auc": 0.46378802302967104,
+        "confusion": {
+          "tn": 368,
+          "fp": 339,
+          "fn": 709,
+          "tp": 206
+        },
+        "n_benign": 707,
+        "n_attack": 915
+      },
+      "Decision Tree": {
+        "accuracy": 0.4845869297163995,
+        "precision": 0.5514993481095176,
+        "recall": 0.46229508196721314,
+        "f1": 0.5029726516052319,
+        "false_positive_rate": 0.48656294200848654,
+        "miss_rate": 0.5377049180327869,
+        "roc_auc": 0.4016354797072213,
+        "pr_auc": 0.5560426533181322,
+        "confusion": {
+          "tn": 363,
+          "fp": 344,
+          "fn": 492,
+          "tp": 423
+        },
+        "n_benign": 707,
+        "n_attack": 915
+      },
+      "Random Forest": {
+        "accuracy": 0.41738594327990136,
+        "precision": 0.1875,
+        "recall": 0.009836065573770493,
+        "f1": 0.018691588785046728,
+        "false_positive_rate": 0.055162659123055166,
+        "miss_rate": 0.9901639344262295,
+        "roc_auc": 0.3077507516559619,
+        "pr_auc": 0.4430276674777642,
+        "confusion": {
+          "tn": 668,
+          "fp": 39,
+          "fn": 906,
+          "tp": 9
+        },
+        "n_benign": 707,
+        "n_attack": 915
+      },
+      "Gradient Boosting": {
+        "accuracy": 0.3094944512946979,
+        "precision": 0.17252396166134185,
+        "recall": 0.05901639344262295,
+        "f1": 0.08794788273615635,
+        "false_positive_rate": 0.36633663366336633,
+        "miss_rate": 0.940983606557377,
+        "roc_auc": 0.167390884287492,
+        "pr_auc": 0.4254075677040814,
+        "confusion": {
+          "tn": 448,
+          "fp": 259,
+          "fn": 861,
+          "tp": 54
+        },
+        "n_benign": 707,
+        "n_attack": 915
+      }
+    },
+    "live_models": {
+      "Logistic Regression": {
+        "accuracy": 0.7641921397379913,
+        "precision": 0.9504504504504504,
+        "recall": 0.685064935064935,
+        "f1": 0.7962264150943397,
+        "false_positive_rate": 0.07333333333333333,
+        "miss_rate": 0.31493506493506496,
+        "roc_auc": 0.909004329004329,
+        "pr_auc": 0.9571566212574227,
+        "confusion": {
+          "tn": 139,
+          "fp": 11,
+          "fn": 97,
+          "tp": 211
+        },
+        "n_benign": 150,
+        "n_attack": 308
+      },
+      "Decision Tree": {
+        "accuracy": 0.9323144104803494,
+        "precision": 0.9893992932862191,
+        "recall": 0.9090909090909091,
+        "f1": 0.9475465313028765,
+        "false_positive_rate": 0.02,
+        "miss_rate": 0.09090909090909091,
+        "roc_auc": 0.9433333333333334,
+        "pr_auc": 0.9605892741665112,
+        "confusion": {
+          "tn": 147,
+          "fp": 3,
+          "fn": 28,
+          "tp": 280
+        },
+        "n_benign": 150,
+        "n_attack": 308
+      },
+      "Random Forest": {
+        "accuracy": 0.9213973799126638,
+        "precision": 0.9892086330935251,
+        "recall": 0.8928571428571429,
+        "f1": 0.9385665529010239,
+        "false_positive_rate": 0.02,
+        "miss_rate": 0.10714285714285714,
+        "roc_auc": 0.9700324675324674,
+        "pr_auc": 0.9870998907184817,
+        "confusion": {
+          "tn": 147,
+          "fp": 3,
+          "fn": 33,
+          "tp": 275
+        },
+        "n_benign": 150,
+        "n_attack": 308
+      },
+      "Gradient Boosting": {
+        "accuracy": 0.9323144104803494,
+        "precision": 0.9893992932862191,
+        "recall": 0.9090909090909091,
+        "f1": 0.9475465313028765,
+        "false_positive_rate": 0.02,
+        "miss_rate": 0.09090909090909091,
+        "roc_auc": 0.9756709956709957,
+        "pr_auc": 0.9896103815168266,
+        "confusion": {
+          "tn": 147,
+          "fp": 3,
+          "fn": 28,
+          "tp": 280
+        },
+        "n_benign": 150,
+        "n_attack": 308
+      }
+    }
+  },
+  "protocols": {
+    "A": {
+      "metrics": {
+        "Logistic Regression": {
+          "accuracy": 0.8422866666666666,
+          "precision": 0.6169805298436004,
+          "recall": 0.5238304935469665,
+          "f1": 0.5666025464871302,
+          "false_positive_rate": 0.07968193627105138,
+          "miss_rate": 0.4761695064530334,
+          "roc_auc": 0.7365658177221629,
+          "pr_auc": 0.6052493563444755,
+          "confusion": {
+            "tn": 110879,
+            "fp": 9600,
+            "fn": 14057,
+            "tp": 15464
+          },
+          "n_benign": 120479,
+          "n_attack": 29521
+        },
+        "Decision Tree": {
+          "accuracy": 0.9634933333333333,
+          "precision": 0.8586557680260135,
+          "recall": 0.9750008468547814,
+          "f1": 0.9131372735636559,
+          "false_positive_rate": 0.03932635563044182,
+          "miss_rate": 0.024999153145218656,
+          "roc_auc": 0.993120107445148,
+          "pr_auc": 0.9715447998496785,
+          "confusion": {
+            "tn": 115741,
+            "fp": 4738,
+            "fn": 738,
+            "tp": 28783
+          },
+          "n_benign": 120479,
+          "n_attack": 29521
+        },
+        "Random Forest": {
+          "accuracy": 0.9691133333333334,
+          "precision": 0.8843350423126815,
+          "recall": 0.9699197181667287,
+          "f1": 0.9251522641722807,
+          "false_positive_rate": 0.031084255347404943,
+          "miss_rate": 0.03008028183327123,
+          "roc_auc": 0.9941216889682949,
+          "pr_auc": 0.9731342190358436,
+          "confusion": {
+            "tn": 116734,
+            "fp": 3745,
+            "fn": 888,
+            "tp": 28633
+          },
+          "n_benign": 120479,
+          "n_attack": 29521
+        },
+        "Gradient Boosting": {
+          "accuracy": 0.9789866666666667,
+          "precision": 0.9174291594111129,
+          "recall": 0.981572439957996,
+          "f1": 0.9484175040094263,
+          "false_positive_rate": 0.021646926020302295,
+          "miss_rate": 0.018427560042003997,
+          "roc_auc": 0.9975562617360246,
+          "pr_auc": 0.9897204874492933,
+          "confusion": {
+            "tn": 117871,
+            "fp": 2608,
+            "fn": 544,
+            "tp": 28977
+          },
+          "n_benign": 120479,
+          "n_attack": 29521
+        }
+      },
+      "per_attack": {
+        "Logistic Regression": {
+          "Bot": {
+            "n": 111,
+            "recall": 0.009009009009009009
+          },
+          "DDoS": {
+            "n": 6831,
+            "recall": 0.6306543697848046
+          },
+          "DoS GoldenEye": {
+            "n": 533,
+            "recall": 0.8180112570356473
+          },
+          "DoS Hulk": {
+            "n": 12139,
+            "recall": 0.8608616854765632
+          },
+          "DoS Slowhttptest": {
+            "n": 282,
+            "recall": 0.3191489361702128
+          },
+          "DoS slowloris": {
+            "n": 290,
+            "recall": 0.28620689655172415
+          },
+          "FTP-Patator": {
+            "n": 412,
+            "recall": 0.009708737864077669
+          },
+          "Heartbleed": {
+            "n": 1,
+            "recall": 0.0
+          },
+          "Infiltration": {
+            "n": 2,
+            "recall": 0.0
+          },
+          "PortScan": {
+            "n": 8503,
+            "recall": 0.010702105139362579
+          },
+          "SSH-Patator": {
+            "n": 289,
+            "recall": 0.0
+          },
+          "Web Attack \u00ef\u00bf\u00bd Brute Force": {
+            "n": 86,
+            "recall": 0.0
+          },
+          "Web Attack \u00ef\u00bf\u00bd Sql Injection": {
+            "n": 1,
+            "recall": 0.0
+          },
+          "Web Attack \u00ef\u00bf\u00bd XSS": {
+            "n": 41,
+            "recall": 0.024390243902439025
+          }
+        },
+        "Decision Tree": {
+          "Bot": {
+            "n": 111,
+            "recall": 0.2882882882882883
+          },
+          "DDoS": {
+            "n": 6831,
+            "recall": 0.9976577367881716
+          },
+          "DoS GoldenEye": {
+            "n": 533,
+            "recall": 0.9099437148217636
+          },
+          "DoS Hulk": {
+            "n": 12139,
+            "recall": 0.9861603097454485
+          },
+          "DoS Slowhttptest": {
+            "n": 282,
+            "recall": 0.7304964539007093
+          },
+          "DoS slowloris": {
+            "n": 290,
+            "recall": 0.8517241379310345
+          },
+          "FTP-Patator": {
+            "n": 412,
+            "recall": 1.0
+          },
+          "Heartbleed": {
+            "n": 1,
+            "recall": 1.0
+          },
+          "Infiltration": {
+            "n": 2,
+            "recall": 0.0
+          },
+          "PortScan": {
+            "n": 8503,
+            "recall": 0.9951781724097377
+          },
+          "SSH-Patator": {
+            "n": 289,
+            "recall": 0.5155709342560554
+          },
+          "Web Attack \u00ef\u00bf\u00bd Brute Force": {
+            "n": 86,
+            "recall": 0.03488372093023256
+          },
+          "Web Attack \u00ef\u00bf\u00bd Sql Injection": {
+            "n": 1,
+            "recall": 0.0
+          },
+          "Web Attack \u00ef\u00bf\u00bd XSS": {
+            "n": 41,
+            "recall": 0.0
+          }
+        },
+        "Random Forest": {
+          "Bot": {
+            "n": 111,
+            "recall": 0.0
+          },
+          "DDoS": {
+            "n": 6831,
+            "recall": 0.9976577367881716
+          },
+          "DoS GoldenEye": {
+            "n": 533,
+            "recall": 0.7448405253283302
+          },
+          "DoS Hulk": {
+            "n": 12139,
+            "recall": 0.9871488590493451
+          },
+          "DoS Slowhttptest": {
+            "n": 282,
+            "recall": 0.8404255319148937
+          },
+          "DoS slowloris": {
+            "n": 290,
+            "recall": 0.8689655172413793
+          },
+          "FTP-Patator": {
+            "n": 412,
+            "recall": 0.8228155339805825
+          },
+          "Heartbleed": {
+            "n": 1,
+            "recall": 0.0
+          },
+          "Infiltration": {
+            "n": 2,
+            "recall": 0.0
+          },
+          "PortScan": {
+            "n": 8503,
+            "recall": 0.9952957779607198
+          },
+          "SSH-Patator": {
+            "n": 289,
+            "recall": 0.5086505190311419
+          },
+          "Web Attack \u00ef\u00bf\u00bd Brute Force": {
+            "n": 86,
+            "recall": 0.0
+          },
+          "Web Attack \u00ef\u00bf\u00bd Sql Injection": {
+            "n": 1,
+            "recall": 0.0
+          },
+          "Web Attack \u00ef\u00bf\u00bd XSS": {
+            "n": 41,
+            "recall": 0.0
+          }
+        },
+        "Gradient Boosting": {
+          "Bot": {
+            "n": 111,
+            "recall": 0.4954954954954955
+          },
+          "DDoS": {
+            "n": 6831,
+            "recall": 0.9979505196896501
+          },
+          "DoS GoldenEye": {
+            "n": 533,
+            "recall": 0.9662288930581614
+          },
+          "DoS Hulk": {
+            "n": 12139,
+            "recall": 0.9874783754839772
+          },
+          "DoS Slowhttptest": {
+            "n": 282,
+            "recall": 0.9787234042553191
+          },
+          "DoS slowloris": {
+            "n": 290,
+            "recall": 0.9827586206896551
+          },
+          "FTP-Patator": {
+            "n": 412,
+            "recall": 0.9975728155339806
+          },
+          "Heartbleed": {
+            "n": 1,
+            "recall": 0.0
+          },
+          "Infiltration": {
+            "n": 2,
+            "recall": 0.0
+          },
+          "PortScan": {
+            "n": 8503,
+            "recall": 0.9971774667764318
+          },
+          "SSH-Patator": {
+            "n": 289,
+            "recall": 0.5155709342560554
+          },
+          "Web Attack \u00ef\u00bf\u00bd Brute Force": {
+            "n": 86,
+            "recall": 0.03488372093023256
+          },
+          "Web Attack \u00ef\u00bf\u00bd Sql Injection": {
+            "n": 1,
+            "recall": 0.0
+          },
+          "Web Attack \u00ef\u00bf\u00bd XSS": {
+            "n": 41,
+            "recall": 0.0
+          }
+        }
+      },
+      "operating_points": {
+        "Logistic Regression": [
+          {
+            "max_fpr": 0.01,
+            "threshold": 0.8700920698262682,
+            "recall": 0.39294061854273227,
+            "actual_fpr": 0.008059495845749052
+          },
+          {
+            "max_fpr": 0.001,
+            "threshold": 0.9399464605064655,
+            "recall": 0.055756918803563565,
+            "actual_fpr": 0.0009960242033881424
+          }
+        ],
+        "Decision Tree": [
+          {
+            "max_fpr": 0.01,
+            "threshold": 0.9158440694608311,
+            "recall": 0.8749026117001456,
+            "actual_fpr": 0.009047219847442292
+          },
+          {
+            "max_fpr": 0.001,
+            "threshold": 0.9972543331097076,
+            "recall": 0.47217235188509876,
+            "actual_fpr": 0.0008632209762697233
+          }
+        ],
+        "Random Forest": [
+          {
+            "max_fpr": 0.01,
+            "threshold": 0.835163005203254,
+            "recall": 0.8156566511974527,
+            "actual_fpr": 0.003950896006772965
+          },
+          {
+            "max_fpr": 0.001,
+            "threshold": 0.9927769282683283,
+            "recall": 0.27573591680498627,
+            "actual_fpr": 0.0009545231949136364
+          }
+        ],
+        "Gradient Boosting": [
+          {
+            "max_fpr": 0.01,
+            "threshold": 0.8327715129824281,
+            "recall": 0.937434368754446,
+            "actual_fpr": 0.008997418637272886
+          },
+          {
+            "max_fpr": 0.001,
+            "threshold": 0.9936963100018927,
+            "recall": 0.7011280105687476,
+            "actual_fpr": 0.0009711235983034388
+          }
+        ]
+      }
+    },
+    "B": {
+      "metrics": {
+        "Logistic Regression": {
+          "accuracy": 0.6462891230906281,
+          "precision": 0.6602629482071714,
+          "recall": 0.28693664837162597,
+          "f1": 0.40002896556718204,
+          "false_positive_rate": 0.10300459253067526,
+          "miss_rate": 0.7130633516283741,
+          "roc_auc": 0.48053638659209247,
+          "pr_auc": 0.5236670966786372,
+          "confusion": {
+            "tn": 371296,
+            "fp": 42637,
+            "fn": 205922,
+            "tp": 82863
+          },
+          "n_benign": 413933,
+          "n_attack": 288785
+        },
+        "Decision Tree": {
+          "accuracy": 0.6758728252300353,
+          "precision": 0.7988031224595735,
+          "recall": 0.28241425281784027,
+          "f1": 0.4172951566193551,
+          "false_positive_rate": 0.0496263888117159,
+          "miss_rate": 0.7175857471821597,
+          "roc_auc": 0.7975564141172038,
+          "pr_auc": 0.797618925132972,
+          "confusion": {
+            "tn": 393391,
+            "fp": 20542,
+            "fn": 207228,
+            "tp": 81557
+          },
+          "n_benign": 413933,
+          "n_attack": 288785
+        },
+        "Random Forest": {
+          "accuracy": 0.6785709203407341,
+          "precision": 0.8141874007411328,
+          "recall": 0.28226535311737105,
+          "f1": 0.4192007240898735,
+          "false_positive_rate": 0.044942055839954774,
+          "miss_rate": 0.7177346468826289,
+          "roc_auc": 0.7758818571613594,
+          "pr_auc": 0.712178485395623,
+          "confusion": {
+            "tn": 395330,
+            "fp": 18603,
+            "fn": 207271,
+            "tp": 81514
+          },
+          "n_benign": 413933,
+          "n_attack": 288785
+        },
+        "Gradient Boosting": {
+          "accuracy": 0.7011446981577247,
+          "precision": 0.888194595020796,
+          "recall": 0.31205914434613985,
+          "f1": 0.4618510840570203,
+          "false_positive_rate": 0.02740540135722448,
+          "miss_rate": 0.6879408556538601,
+          "roc_auc": 0.7585286729624845,
+          "pr_auc": 0.7173876412380408,
+          "confusion": {
+            "tn": 402589,
+            "fp": 11344,
+            "fn": 198667,
+            "tp": 90118
+          },
+          "n_benign": 413933,
+          "n_attack": 288785
+        }
+      },
+      "per_attack": {
+        "Logistic Regression": {
+          "Bot": {
+            "n": 1956,
+            "recall": 0.04550102249488753
+          },
+          "DDoS": {
+            "n": 128025,
+            "recall": 0.6356024214020699
+          },
+          "PortScan": {
+            "n": 158804,
+            "recall": 0.008822195914460594
+          }
+        },
+        "Decision Tree": {
+          "Bot": {
+            "n": 1956,
+            "recall": 0.0
+          },
+          "DDoS": {
+            "n": 128025,
+            "recall": 0.6356727201718414
+          },
+          "PortScan": {
+            "n": 158804,
+            "recall": 0.0011019873554822296
+          }
+        },
+        "Random Forest": {
+          "Bot": {
+            "n": 1956,
+            "recall": 0.0
+          },
+          "DDoS": {
+            "n": 128025,
+            "recall": 0.6345869947275923
+          },
+          "PortScan": {
+            "n": 158804,
+            "recall": 0.001706506133346767
+          }
+        },
+        "Gradient Boosting": {
+          "Bot": {
+            "n": 1956,
+            "recall": 0.0
+          },
+          "DDoS": {
+            "n": 128025,
+            "recall": 0.701917594219879
+          },
+          "PortScan": {
+            "n": 158804,
+            "recall": 0.0016057530037026776
+          }
+        }
+      },
+      "operating_points": {
+        "Logistic Regression": [
+          {
+            "max_fpr": 0.01,
+            "threshold": 0.9648336613778142,
+            "recall": 0.1070935124746784,
+            "actual_fpr": 0.009999202769530334
+          },
+          {
+            "max_fpr": 0.001,
+            "threshold": 0.982973482909501,
+            "recall": 0.028799972297730146,
+            "actual_fpr": 0.0009977460120357642
+          }
+        ],
+        "Decision Tree": [
+          {
+            "max_fpr": 0.01,
+            "threshold": 0.9682845808324745,
+            "recall": 0.2811641878906453,
+            "actual_fpr": 0.0023482061106507575
+          },
+          {
+            "max_fpr": 0.001,
+            "threshold": 0.9979854236339654,
+            "recall": 0.0,
+            "actual_fpr": 5.073284806961513e-05
+          }
+        ],
+        "Random Forest": [
+          {
+            "max_fpr": 0.01,
+            "threshold": 0.9332796118809056,
+            "recall": 0.1289367522551379,
+            "actual_fpr": 0.009999202769530334
+          },
+          {
+            "max_fpr": 0.001,
+            "threshold": 0.9805808713195787,
+            "recall": 0.07616046539813356,
+            "actual_fpr": 0.0001763570432896145
+          }
+        ],
+        "Gradient Boosting": [
+          {
+            "max_fpr": 0.01,
+            "threshold": 0.9134032418076422,
+            "recall": 0.28104299046003084,
+            "actual_fpr": 0.00904977375565611
+          },
+          {
+            "max_fpr": 0.001,
+            "threshold": 0.972785771553812,
+            "recall": 0.28047509392800873,
+            "actual_fpr": 0.0007827353702169192
+          }
+        ]
+      }
+    }
+  }
+}

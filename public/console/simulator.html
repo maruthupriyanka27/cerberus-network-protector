@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Attack Simulator — Signal Room</title>
+<link rel="stylesheet" href="style.css">
+<script src="app.js"></script>
+<script src="vendor/papaparse.min.js"></script>
+<style>
+  .mode-toggle{ display:flex; gap:8px; margin-bottom:16px; }
+  .mode-toggle button{ flex:1; justify-content:center; }
+  .mode-toggle button.selected.legit{ background: var(--allow-bg); border-color: var(--allow); color: var(--allow); }
+  .mode-toggle button.selected.attack{ background: var(--block-bg); border-color: var(--block); color: var(--block); }
+  .field{ margin-bottom:16px; }
+  .field label{ display:flex; justify-content:space-between; font-size:12.5px; color:var(--text-dim); margin-bottom:8px; }
+  .field label b{ color: var(--text); font-family: var(--font-data); font-weight:600; }
+  .run-row{ display:flex; gap:10px; margin-top:6px; }
+  .run-row button{ flex:1; justify-content:center; }
+</style>
+</head>
+<body>
+
+<div class="topnav">
+  <div class="brand"><div class="brand-mark"></div>Signal Room</div>
+  <nav>
+    <a href="dashboard.html">Dashboard</a>
+    <a href="/" data-origin="public">Demo Site</a>
+    <a href="/_console/challenge.html" data-origin="public">PoW Challenge</a>
+    <a href="simulator.html" class="active">Attack Simulator</a>
+  </nav>
+  <div class="status"><span class="dot" id="run-dot"></span> <span id="run-status">idle</span></div>
+</div>
+
+<div class="page">
+  <div class="page-head">
+    <h1>Attack Simulator</h1>
+    <p>Generates labelled traffic against the demo site so scoring decisions can be checked against ground truth.</p>
+    <p class="faint" style="font-size:12px;">For the real two-PC demo, use the <a href="lab.html">Attack Lab</a> on the CLIENT PC instead — it attacks using that PC's own real IP, so the block actually applies to that PC's browser. This simulator fakes many identities from ONE machine via the X-Sim-Client header, which only works when the server is started with <code>ALLOW_SIM_IDS=1</code> (single-machine testing/training, not the live demo).</p>
+  </div>
+
+  <div class="grid cols-2" style="align-items:start;">
+    <div class="panel">
+      <h2>Configuration</h2>
+
+      <div class="mode-toggle">
+        <button class="selected legit" id="btn-legit">Legit mode</button>
+        <button class="attack" id="btn-attack">Attack mode</button>
+      </div>
+
+      <div class="field">
+        <label>Parallel clients <b id="val-clients">10</b></label>
+        <input type="range" id="clients" min="1" max="80" value="10">
+      </div>
+
+      <div class="field" id="delay-field">
+        <label>Request delay range <b id="val-delay">2–5s</b></label>
+        <input type="range" id="delay" min="0" max="100" value="50">
+      </div>
+
+      <div class="field">
+        <label>Target endpoint</label>
+        <select style="width:100%;">
+          <option>/ (homepage)</option>
+          <option>/search</option>
+          <option>/login</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>Target proxy (public site, NOT this admin console)</label>
+        <input id="target-origin" type="text" style="width:100%;" placeholder="http://192.168.x.x:8080">
+        <div style="font-size:11px; color:var(--text-faint); margin-top:6px;">Defaults to this machine's own public proxy port. Change this if the proxy runs on a different host (e.g. the deployed VPS) than this admin console.</div>
+      </div>
+
+      <div class="field">
+        <label>Data source</label>
+        <select id="data-source" style="width:100%;">
+          <option value="synthetic">Synthetic (made-up traffic)</option>
+          <option value="dataset">CICIDS2017 sample (real recorded flows)</option>
+        </select>
+        <div id="dataset-status" style="font-size:11.5px; color:var(--text-faint); margin-top:6px;"></div>
+      </div>
+
+      <div class="run-row">
+        <button class="primary" id="btn-start">▶ Start run</button>
+        <button class="danger" id="btn-stop" disabled>■ Stop</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Run summary</h2>
+      <div class="grid cols-2" style="margin-bottom:16px;">
+        <div class="kpi">
+          <div class="label">Requests sent</div>
+          <div class="value" id="sum-sent">0</div>
+        </div>
+        <div class="kpi">
+          <div class="label">Labelled</div>
+          <div class="value mono" style="font-size:16px; padding-top:8px;" id="sum-label">—</div>
+        </div>
+      </div>
+      <h2>Live log</h2>
+      <div class="log" id="log"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const btnLegit = document.getElementById('btn-legit');
+  const btnAttack = document.getElementById('btn-attack');
+  const btnStart = document.getElementById('btn-start');
+  const btnStop = document.getElementById('btn-stop');
+  const clientsSlider = document.getElementById('clients');
+  const delaySlider = document.getElementById('delay');
+  const delayField = document.getElementById('delay-field');
+  const log = document.getElementById('log');
+  const runDot = document.getElementById('run-dot');
+  const runStatus = document.getElementById('run-status');
+  const targetOriginInput = document.getElementById('target-origin');
+  targetOriginInput.value = publicOrigin(); // app.js helper — same host, proxy's port
+
+  let mode = 'legit';
+  let running = false;
+  let sent = 0;
+  let interval = null;
+
+  // ---- CICIDS2017 sample dataset (loaded once, lazily) ----
+  const dataSourceSelect = document.getElementById('data-source');
+  const datasetStatusEl = document.getElementById('dataset-status');
+  let datasetRows = { benign: [], attack: [] };
+  let datasetLoaded = false;
+  let datasetLoading = false;
+
+  function loadDatasetIfNeeded(){
+    if (dataSourceSelect.value !== 'dataset' || datasetLoaded || datasetLoading) return;
+    if (typeof Papa === 'undefined'){
+      datasetStatusEl.textContent = 'CSV parser failed to load — check your network connection.';
+      return;
+    }
+    datasetLoading = true;
+    datasetStatusEl.textContent = 'Loading cicids2017_sample.csv…';
+    Papa.parse('cicids2017_sample.csv', {
+      download: true,
+      header: true,
+      dynamicTyping: true,
+      complete: (results) => {
+        const rows = results.data.filter(r => r && r.Label);
+        datasetRows.benign = rows.filter(r => r.IsAttack === 0);
+        datasetRows.attack = rows.filter(r => r.IsAttack === 1);
+        datasetLoaded = true;
+        datasetLoading = false;
+        datasetStatusEl.textContent = `Loaded ${rows.length.toLocaleString()} real flows (${datasetRows.benign.length} benign / ${datasetRows.attack.length} attack, from CICIDS2017).`;
+      },
+      error: (err) => {
+        datasetLoading = false;
+        if (location.protocol === 'file:'){
+          datasetStatusEl.innerHTML = '⚠️ Can\'t load the CSV over file://. Open this page through <b>Live Server</b> (or any local http:// server) instead of double-clicking the file.';
+        } else {
+          datasetStatusEl.textContent = 'Could not load the dataset CSV — is cicids2017_sample.csv in this folder?';
+        }
+        console.error(err);
+      }
+    });
+  }
+  dataSourceSelect.onchange = loadDatasetIfNeeded;
+
+  if (location.protocol === 'file:'){
+    datasetStatusEl.innerHTML = '⚠️ This page is open as a local file. The dataset option needs a local server — open via <b>Live Server</b> in VS Code instead.';
+  }
+
+  function setMode(m){
+    mode = m;
+    btnLegit.classList.toggle('selected', m === 'legit');
+    btnAttack.classList.toggle('selected', m === 'attack');
+    delayField.style.opacity = m === 'legit' ? 1 : 0.35;
+    delaySlider.disabled = m === 'attack';
+  }
+  btnLegit.onclick = () => setMode('legit');
+  btnAttack.onclick = () => setMode('attack');
+
+  clientsSlider.oninput = () => document.getElementById('val-clients').textContent = clientsSlider.value;
+  delaySlider.oninput = () => {
+    const lo = (1 + delaySlider.value/100*1).toFixed(1);
+    const hi = (2 + delaySlider.value/100*3).toFixed(1);
+    document.getElementById('val-delay').textContent = lo + '–' + hi + 's';
+  };
+
+  const paths = ['/','/search?q=jacket','/login','/northbank.css'];
+  const clientIds = Array.from({length:80}, (_,i) => 'c' + (i+1) + '_' + Math.random().toString(36).slice(2,6));
+
+  async function fireRequest(){
+    const t = new Date().toLocaleTimeString('en-GB', { hour12:false });
+    const useDataset = dataSourceSelect.value === 'dataset' && datasetLoaded;
+    const clientId = clientIds[Math.floor(Math.random()*clientsSlider.value)];
+    let extra = '';
+
+    if (useDataset){
+      const pool = mode === 'attack' ? datasetRows.attack : datasetRows.benign;
+      const row = pool.length ? pool[Math.floor(Math.random() * pool.length)] : null;
+      if (row){
+        extra = ` · flow=${row.Category} · dur=${Math.round(row['Flow Duration'])}µs · pkts/s=${Number(row['Flow Packets/s']).toFixed(1)}`;
+      }
+    }
+
+    // Attack mode: same path every time, no Accept header (the two signals
+    // the scorer can actually see from a browser — see the note in chat
+    // about why User-Agent can't be spoofed via fetch()).
+    // Legit mode: varied paths, normal Accept header, occasionally the CSS
+    // asset — so "never loads static assets" doesn't fire for it.
+    const path = mode === 'attack' ? '/search?q=a' : paths[Math.floor(Math.random()*paths.length)];
+    const headers = { 'X-Sim-Client': clientId };
+    if (mode === 'legit') headers['Accept'] = 'text/html,application/xhtml+xml';
+
+    const base = (targetOriginInput.value || publicOrigin()).replace(/\/+$/, '');
+    let tier = '?', score = '?';
+    try {
+      const res = await fetch(base + path, { headers, mode: 'cors' });
+      tier = res.headers.get('x-tier') || (res.status === 429 ? 'block' : '?');
+      score = res.headers.get('x-score') || '?';
+    } catch (err) {
+      tier = 'error';
+    }
+
+    const line = document.createElement('div');
+    line.className = 'l ' + (tier === 'allow' ? 'legit' : 'attack');
+    line.innerHTML = `<span class="t">${t}</span>GET ${path} · ${clientId} · score=${score} → ${tier}${extra}`;
+    log.prepend(line);
+    while (log.children.length > 60) log.removeChild(log.lastChild);
+    sent++;
+    document.getElementById('sum-sent').textContent = sent.toLocaleString();
+    document.getElementById('sum-label').textContent = useDataset ? `${mode} · CICIDS2017` : mode;
+  }
+
+  btnStart.onclick = () => {
+    if (dataSourceSelect.value === 'dataset' && !datasetLoaded){
+      loadDatasetIfNeeded();
+    }
+    running = true;
+    btnStart.disabled = true; btnStop.disabled = false;
+    btnLegit.disabled = true; btnAttack.disabled = true;
+    dataSourceSelect.disabled = true;
+    runDot.style.background = mode === 'attack' ? '#E63971' : '#00B37E';
+    runDot.classList.add('pulse');
+    runStatus.textContent = `running · ${mode}`;
+    const speed = mode === 'attack' ? 90 : 700;
+    interval = setInterval(fireRequest, speed);
+  };
+  btnStop.onclick = () => {
+    running = false;
+    clearInterval(interval);
+    btnStart.disabled = false; btnStop.disabled = true;
+    btnLegit.disabled = false; btnAttack.disabled = false;
+    dataSourceSelect.disabled = false;
+    runDot.classList.remove('pulse');
+    runDot.style.background = '#9B92B8';
+    runStatus.textContent = 'idle';
+  };
+</script>
+
+</body>
+</html>

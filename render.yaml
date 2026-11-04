@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: ddos-signal-room
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /_security/status
+    envVars:
+      - key: SINGLE_PORT
+        value: "1"
+      - key: TRUST_PROXY
+        value: "1"
+      - key: TCP_MONITOR
+        value: "off"
+      - key: ADMIN_TOKEN
+        generateValue: true

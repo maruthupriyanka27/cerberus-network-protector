@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Signal Room — Live Dashboard</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="topnav">
+  <div class="brand"><div class="brand-mark"></div>Signal Room</div>
+  <nav>
+    <a href="dashboard.html" class="active">Dashboard</a>
+    <a href="/" data-origin="public">Demo Site</a>
+    <a href="/_console/challenge.html" data-origin="public">PoW Challenge</a>
+    <a href="simulator.html">Attack Simulator</a>
+  </nav>
+  <div class="status"><span class="dot pulse"></span> live · connected to proxy</div>
+</div>
+
+<div class="page">
+  <div class="page-head" style="display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:12px;">
+    <div>
+      <h1>Live Traffic & Threat Mitigation Dashboard</h1>
+      <p>Multi-layer defense: Raw TCP socket protection, exponential reputation scoring, PoW challenge & ML classification.</p>
+    </div>
+    <div style="display:flex; gap:8px;">
+      <button id="btn-unblock-all" class="btn" style="font-size:12px; padding:7px 12px; border-color:var(--block); color:var(--block);" title="Clears every current block and PoW pass">Unblock All</button>
+      <button id="btn-test-alert" class="btn" style="font-size:12px; padding:7px 12px;" title="Broadcasts a test security alert to the demo site and dashboard">⚡ Simulate Alert</button>
+      <a href="simulator.html" class="btn primary" style="font-size:12px; padding:7px 14px; text-decoration:none;">Launch Simulator →</a>
+    </div>
+  </div>
+
+  <!-- Dynamic Security Threat Banner -->
+  <div class="threat-banner" id="threat-banner">
+    <div class="threat-banner-left">
+      <span class="threat-badge secure" id="threat-badge">
+        <span class="dot" style="background:#00B37E; box-shadow:none;"></span>
+        SYSTEM SECURE
+      </span>
+      <div class="threat-info">
+        <span class="threat-title" id="threat-title">All Protection Layers Operational · Normal Traffic Pattern</span>
+        <span class="threat-desc" id="threat-desc">TCP-layer monitor, reputation gate, and machine learning engine are filtering live requests.</span>
+      </div>
+    </div>
+    <div class="threat-actions">
+      <span class="mono faint" style="font-size:11.5px;" id="threat-clock">—</span>
+    </div>
+  </div>
+
+  <!-- SOC KPI Row: 6 metrics -->
+  <div class="grid cols-6" style="margin-bottom:16px;">
+    <div class="panel kpi">
+      <div class="label">Allowed Traffic</div>
+      <div class="value allow" id="kpi-allow">0</div>
+      <div class="delta" id="kpi-allow-rate">— req/s</div>
+    </div>
+    <div class="panel kpi">
+      <div class="label">Challenged (PoW)</div>
+      <div class="value challenge" id="kpi-challenge">0</div>
+      <div class="delta" id="kpi-challenge-rate">— req/s</div>
+    </div>
+    <div class="panel kpi">
+      <div class="label">Blocked (429)</div>
+      <div class="value block" id="kpi-block">0</div>
+      <div class="delta" id="kpi-block-rate">— req/s</div>
+    </div>
+    <div class="panel kpi">
+      <div class="label">Closed at TCP</div>
+      <div class="value block" id="kpi-tcp">0</div>
+      <div class="delta" id="kpi-tcp-detail">Flood: 0 · Slowloris: 0</div>
+    </div>
+    <div class="panel kpi">
+      <div class="label">Filter Efficiency</div>
+      <div class="value allow" id="kpi-efficiency">100%</div>
+      <div class="delta" id="kpi-total-traffic">0 total requests</div>
+    </div>
+    <div class="panel kpi">
+      <div class="label">Banned / Monitored</div>
+      <div class="value mono" style="font-size:22px; padding-top:6px;" id="kpi-banned">0 banned</div>
+      <div class="delta" id="kpi-sockets">0 active sockets</div>
+    </div>
+  </div>
+
+  <!-- Real-Time Charts Row -->
+  <div class="grid cols-2" style="margin-bottom:16px; align-items:start;">
+    <!-- Chart: decisions over time -->
+    <div class="panel">
+      <h2>Decisions over time <span class="sub">last 60s (Allow / Challenge / Block)</span></h2>
+      <div style="position:relative; height:160px;">
+        <canvas id="chart-decisions"></canvas>
+      </div>
+    </div>
+
+    <!-- ML confidence panel -->
+    <div class="panel">
+      <h2>ML attack probability <span class="sub">average over scored visitors, live</span></h2>
+      <div style="position:relative; height:160px;">
+        <canvas id="chart-ml"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Live Security Incident & Attack Stream (Real-Time Feed) -->
+  <div class="panel" style="margin-bottom:16px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
+      <h2>Live Threat Incident Stream <span class="sub">real-time drops and mitigation decisions</span></h2>
+      <div style="display:flex; gap:6px; align-items:center;">
+        <button id="btn-stream-filter-all" class="filter-pill active">All</button>
+        <button id="btn-stream-filter-tcp" class="filter-pill">TCP Layer</button>
+        <button id="btn-stream-filter-block" class="filter-pill">HTTP Blocks</button>
+        <button id="btn-stream-filter-challenge" class="filter-pill">Challenges</button>
+        <button id="btn-stream-clear" class="btn ghost" style="padding:4px 8px; font-size:11px;">Clear Log</button>
+      </div>
+    </div>
+    <div class="incident-log" id="incident-log">
+      <div class="incident-item" style="color:var(--text-faint);">
+        <span class="incident-msg">Listening for security events from reverse proxy and TCP monitor... Run the simulator or attack scripts to see live entries.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Active Visitors Table Panel -->
+  <div class="panel" style="margin-bottom:16px;">
+    <h2>Active Visitors <span class="sub">click any row to inspect explainable ML attribution (SHAP)</span></h2>
+    
+    <div class="table-controls">
+      <div class="filter-pills" id="visitor-filters">
+        <button class="filter-pill active" data-filter="all">All Visitors</button>
+        <button class="filter-pill" data-filter="block">Blocked</button>
+        <button class="filter-pill" data-filter="challenge">Challenged</button>
+        <button class="filter-pill" data-filter="allow">Allowed</button>
+        <button class="filter-pill" data-filter="ml-high">High ML Risk (&gt;0.5)</button>
+      </div>
+      <input type="text" id="visitor-search" class="table-search" placeholder="Search fingerprint or IP…">
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th class="mono">Client (IP)</th>
+          <th style="width:100px;">Threat Level</th>
+          <th>Score Bar</th>
+          <th class="mono" style="width:60px;">Score</th>
+          <th style="width:130px;">Status</th>
+          <th style="width:90px;">ML prob.</th>
+          <th style="width:110px;">Conn. / 10s</th>
+        </tr>
+      </thead>
+      <tbody id="visitor-rows"></tbody>
+    </table>
+  </div>
+
+  <!-- TCP Protection Engine & Ban Inspector Panel -->
+  <div class="panel" style="margin-bottom:16px;">
+    <h2>TCP Connection Layer Protection <span class="sub">pre-proxy raw socket guard (backend/lib/tcp-monitor.js)</span></h2>
+    <div class="tcp-grid">
+      <div class="tcp-stat-box">
+        <div class="tcp-stat-label">Conn Rate Limit</div>
+        <div class="tcp-stat-val">20 / 2.0s</div>
+        <div class="faint" style="font-size:11px;">per client IP</div>
+      </div>
+      <div class="tcp-stat-box">
+        <div class="tcp-stat-label">Max Concurrency</div>
+        <div class="tcp-stat-val">15 sockets</div>
+        <div class="faint" style="font-size:11px;">simultaneous per IP</div>
+      </div>
+      <div class="tcp-stat-box">
+        <div class="tcp-stat-label">Slowloris Timeout</div>
+        <div class="tcp-stat-val">4.0s</div>
+        <div class="faint" style="font-size:11px;">first byte required</div>
+      </div>
+      <div class="tcp-stat-box">
+        <div class="tcp-stat-label">Temporary Ban</div>
+        <div class="tcp-stat-val">60s ban</div>
+        <div class="faint" style="font-size:11px;">after 3 strikes</div>
+      </div>
+    </div>
+    <div style="margin-top:12px; font-size:12px; color:var(--text-dim);" id="tcp-banned-details">
+      Currently Banned IPs: <b id="tcp-banned-count">0</b>. Banned IPs have all subsequent TCP connections destroyed immediately at step 0 without inspecting HTTP headers.
+    </div>
+  </div>
+
+  <!-- Model Internals and Explainability Row -->
+  <div class="grid cols-2" style="margin-bottom:16px;">
+    <!-- Model specification -->
+    <div class="panel" id="model-panel">
+      <h2>Model Provenance <span class="sub">what is scoring this traffic</span></h2>
+      <div id="model-body" class="dim">Loading model info…</div>
+    </div>
+
+    <!-- Per-visitor feature contributions (tree path attribution) -->
+    <div class="panel">
+      <h2>Explainable AI: Why this visitor scored <span class="sub" id="shap-fp">no scored visitor yet</span></h2>
+      <div id="shap-bars"></div>
+      <p class="faint" style="font-size:12px; margin:10px 0 0;">Per-request tree-path attribution (Saabas) from the live model — red pushes toward attack, green toward benign.</p>
+    </div>
+  </div>
+</div>
+
+<script src="vendor/chart.umd.js"></script>
+<script src="app.js"></script>
+<script src="dashboard.js"></script>
+</body>
+</html>
