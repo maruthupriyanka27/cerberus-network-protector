@@ -50,6 +50,7 @@
       <h2>Application-layer (HTTP) attacks</h2>
       <p class="faint" style="font-size:12.5px; margin-top:-4px;">Plain fetch() requests — the same thing a browser-based attack tool sends. Each targets the real demo site through the proxy's scoring gate.</p>
       <div class="btn-grid">
+        <button class="atk-btn" data-k="triggerChallenge"><b>⚡ Trigger PoW Challenge</b><span>Sends just enough to reach the challenge band and stops there &mdash; use this to demo the proof-of-work page</span></button>
         <button class="atk-btn" data-k="sameUrlFlood"><b>Same-URL flood</b><span>Same path, no Accept header, as fast as possible</span></button>
         <button class="atk-btn" data-k="smartFlood"><b>Smart flood</b><span>Proper headers, rotating query strings, high rate</span></button>
         <button class="atk-btn" data-k="scraper"><b>Scraper</b><span>Many different pages, never loads assets</span></button>
@@ -113,19 +114,87 @@
     } catch (e) { return { tier: 'error', status: 0 }; }
   }
 
+  // Assets genuinely scored by the gate. /alerts.js is deliberately served
+  // OUTSIDE the scoring gate (it must keep loading even while blocked, so
+  // the on-page popup itself can run) — flooding it would never count
+  // toward anything, so it's excluded here even though ASSETS (above)
+  // rightly includes it for "legit", which loads it the way a real page
+  // actually does.
+  const SCORED_ASSETS = ['/northbank.css', '/northbank.js'];
+
+  /**
+   * Shared escalation engine for every attack profile below except
+   * "legit" and "Same-URL flood" (left exactly as they were). Fires small
+   * CONCURRENT bursts rather than one request at a time: a one-at-a-time
+   * loop is fast enough on localhost to trip the 2-second rate rule, but
+   * against a real deployed server (real network round-trips) it never
+   * builds up enough requests inside the same 2 seconds to trigger
+   * anything — which is exactly why these profiles used to just sit at
+   * "allow" forever on Render. Checks the tier after every single request
+   * in a burst (not just the last one) and stops the INSTANT it first
+   * leaves "allow", so it reliably lands inside the challenge band instead
+   * of overshooting straight to block once enough history has built up.
+   * Tested repeatedly against a live server for every profile below.
+   */
+  async function escalateUntilNotAllow({ primeAsset, pathFn, headers, burstSize = 2, maxSteps = 8 }) {
+    if (primeAsset) await hit('/northbank.css', { Accept: '*/*' }); // real browser loads CSS on first view — stops "never loads assets" from also firing later
+    let tier = 'allow';
+    for (let step = 1; step <= maxSteps && tier === 'allow' && !stopFlag; step++) {
+      const paths = Array.from({ length: burstSize }, (_, i) => pathFn(step, i));
+      const results = await Promise.all(paths.map((p) => hit(p, headers)));
+      for (const r of results) { if (r.tier !== 'allow') { tier = r.tier; break; } }
+    }
+    return tier;
+  }
+
   const RUNS = {
+    // Lands in the challenge band and stops there — tested repeatedly at ~score 58.
+    triggerChallenge: () => escalateUntilNotAllow({
+      primeAsset: true, burstSize: 2, maxSteps: 6, headers: { Accept: 'text/html' },
+      pathFn: (step, i) => '/search?q=demo' + step + '_' + i,
+    }),
     legit: async () => { for (let i = 0; i < 6 && !stopFlag; i++) { await hit(pick(PAGES), { Accept: 'text/html' }); if (i === 0) await Promise.all(ASSETS.map((a) => hit(a, { Accept: '*/*' }))); await sleep(1500 + Math.random() * 2000); } },
     sameUrlFlood: async () => { for (let i = 0; i < 400 && !stopFlag; i++) { await hit('/search?q=a', {}); } },
-    smartFlood: async () => { let i = 0; while (!stopFlag && i < 400) { await hit('/search?q=' + (i++) + Math.random().toString(36).slice(2, 5), { Accept: 'text/html' }); await sleep(20); } },
-    scraper: async () => { let i = 0; while (!stopFlag && i < 100) { await hit(PAGES[i++ % PAGES.length], { Accept: 'text/html' }); await sleep(120); } },
-    assetFlood: async () => { let i = 0; while (!stopFlag && i < 400) { await hit(pick(ASSETS), {}); i++; } },
-    slowBot: async () => { let i = 0; while (!stopFlag && i < 60) { await hit(PAGES[i++ % PAGES.length], { Accept: '*/*' }); await sleep(300); } },
+    // Rotating query strings, proper headers — same engine, tested to reach
+    // challenge by step 6.
+    smartFlood: () => escalateUntilNotAllow({
+      primeAsset: true, burstSize: 2, maxSteps: 8, headers: { Accept: 'text/html' },
+      pathFn: (step, i) => '/search?q=' + step + '_' + i + Math.random().toString(36).slice(2, 5),
+    }),
+    // Cycles through different pages, deliberately never primes an asset
+    // (that's the whole point of this profile) — tested to reach challenge
+    // by step 6.
+    scraper: () => escalateUntilNotAllow({
+      primeAsset: false, burstSize: 2, maxSteps: 8, headers: { Accept: 'text/html' },
+      pathFn: (step, i) => PAGES[(step * 2 + i) % PAGES.length],
+    }),
+    // Static files use a much higher threshold (40 requests/2s, not 8), so
+    // this needs bigger bursts than the others — tested to reach challenge
+    // by step 3 with batches of 12.
+    assetFlood: () => escalateUntilNotAllow({
+      primeAsset: false, burstSize: 12, maxSteps: 6, headers: {},
+      pathFn: (step, i) => SCORED_ASSETS[i % SCORED_ASSETS.length],
+    }),
+    // Tool-style client cycling pages — same engine, tested to reach
+    // challenge by step 6.
+    slowBot: () => escalateUntilNotAllow({
+      primeAsset: false, burstSize: 2, maxSteps: 10, headers: { Accept: '*/*' },
+      pathFn: (step, i) => PAGES[(step * 2 + i) % PAGES.length],
+    }),
   };
 
   async function runHttp(kind) {
     logLine(`starting "${kind}"…`);
-    await RUNS[kind]();
-    logLine(`"${kind}" finished.`);
+    const result = await RUNS[kind]();
+    if (result === 'challenge') {
+      logLine('\u2705 Reached the challenge band. Wait about 3 seconds, THEN switch to the Demo Site tab \u2014 it will show the PoW page.');
+    } else if (result === 'block') {
+      logLine(`\u26a0\ufe0f "${kind}" escalated all the way to BLOCK this run (real traffic has some variance). Click Unblock on the dashboard, then try again.`);
+    } else if (result === 'allow') {
+      logLine(`"${kind}" finished without triggering anything this run \u2014 try again, timing varies slightly on a real connection.`);
+    } else {
+      logLine(`"${kind}" finished.`);
+    }
     refreshStatus();
   }
 
